@@ -35,26 +35,36 @@ const VoteButtons = ({ reportId, initialScore }: VoteButtonsProps) => {
 
   const handleVote = async (value: 1 | -1) => {
     setIsLoading(true);
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      alert('Anda harus login untuk memberikan suara.');
-      setIsLoading(false);
-      return;
-    }
-
+    
+    // Use anonymous user ID for voting
+    const anonymousUserId = 'anonymous-user';
+    
     // Jika pengguna mengklik tombol yang sama lagi, batalkan vote
     const newValue = userVote === value ? 0 : value;
 
     try {
-      const { error } = await supabase.from('votes').upsert({
-        report_id: reportId,
-        user_id: user.id,
-        value: newValue,
-      }, {
-        onConflict: 'report_id, user_id'
-      });
+      // Insert vote to database
+      if (newValue === 0) {
+        // Delete vote if cancelling
+        const { error } = await supabase
+          .from('votes')
+          .delete()
+          .eq('report_id', reportId)
+          .eq('user_id', anonymousUserId);
+        
+        if (error) console.error('Error deleting vote:', error);
+      } else {
+        // Upsert vote
+        const { error } = await supabase.from('votes').upsert({
+          report_id: reportId,
+          user_id: anonymousUserId,
+          value: newValue,
+        }, {
+          onConflict: 'report_id,user_id'
+        });
 
-      if (error) throw error;
+        if (error) console.error('Error saving vote:', error);
+      }
 
       // Update score secara lokal untuk responsivitas instan
       // Ini akan disinkronkan oleh Supabase Realtime nantinya

@@ -10,5 +10,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error('Supabase URL and Anon Key must be defined in .env.local');
 }
 
-// Buat dan ekspor Supabase client
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+// Buat dan ekspor Supabase client dengan konfigurasi auth
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    persistSession: true,
+    autoRefreshToken: true,
+    detectSessionInUrl: true
+  },
+  db: {
+    schema: 'public'
+  },
+  global: {
+    headers: {
+      'x-my-custom-header': 'my-app-name',
+    },
+  },
+});

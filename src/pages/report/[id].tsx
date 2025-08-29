@@ -30,7 +30,10 @@ const ReportDetailPage: NextPage<ReportDetailPageProps> = ({ report, error }) =>
 
   return (
     <div className="container mx-auto p-4 max-w-4xl">
-      <Link href="/" className="text-blue-600 hover:underline mb-4 inline-block">
+      <Link 
+        href={`/?lat=${report.lat}&lng=${report.lng}&zoom=16`} 
+        className="text-blue-600 hover:underline mb-4 inline-block"
+      >
         &larr; Kembali ke Peta Utama
       </Link>
 
@@ -71,14 +74,11 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return { notFound: true };
   }
 
-  // Fetch data dari view `report_summary` dan join dengan `reports` untuk lat/lng dan photo_url
+  // Fetch data langsung dari table reports karena report_summary mungkin tidak ada
   const { data, error } = await supabase
-    .from('report_summary')
-    .select(`
-      *,
-      reports (lat, lng, photo_url)
-    `)
-    .eq('report_id', id)
+    .from('reports')
+    .select('*')
+    .eq('id', id)
     .single();
 
   if (error || !data) {
@@ -86,13 +86,19 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     return { props: { report: null, error: error?.message || 'Laporan tidak ditemukan.' } };
   }
 
-  // Transform data untuk meratakan struktur
+  // Transform data untuk compatibility dengan ReportWithScore interface
   const reportData = {
-    ...data,
-    lat: data.reports.lat,
-    lng: data.reports.lng,
-    photo_url: data.reports.photo_url,
-    reports: undefined, // Hapus properti bersarang
+    report_id: data.id,
+    description: data.description,
+    category: data.category,
+    status: data.status,
+    created_at: data.created_at,
+    lat: data.lat,
+    lng: data.lng,
+    photo_url: data.photo_url,
+    upvotes: 0,
+    downvotes: 0,
+    score: 0,
   };
 
   return {

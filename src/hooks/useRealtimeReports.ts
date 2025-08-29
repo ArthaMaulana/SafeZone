@@ -13,6 +13,7 @@ export interface ReportWithScore {
   created_at: string;
   lat: number; // Perlu join untuk mendapatkan ini
   lng: number; // Perlu join untuk mendapatkan ini
+  photo_url?: string | null; // Add photo_url property
   upvotes: number;
   downvotes: number;
   score: number;
@@ -28,33 +29,23 @@ export function useRealtimeReports() {
 
     const fetchInitialReports = async () => {
       setIsLoading(true);
-      // Ambil data awal dari view `report_summary` dan join dengan `reports` untuk lat/lng
-      const { data, error } = await supabase
-        .from('report_summary')
-        .select(`
-          report_id,
-          description,
-          category,
-          status,
-          created_at,
-          upvotes,
-          downvotes,
-          score,
-          reports (lat, lng)
-        `);
+      // Panggil fungsi RPC untuk mendapatkan data yang sudah digabungkan
+      const { data, error } = await supabase.rpc('get_all_reports_with_scores');
 
       if (error) {
         setError(error.message);
         setReports([]);
       } else {
-        // Transform data untuk meratakan struktur
-        const transformedData = data.map((r: any) => ({
+        // Data dari RPC sudah memiliki format yang benar, tidak perlu transformasi
+        // Cukup pastikan nilai null diganti dengan default 0
+        const cleanData = data.map(r => ({
           ...r,
-          lat: r.reports.lat,
-          lng: r.reports.lng,
-          reports: undefined, // Hapus properti bersarang
+          upvotes: r.upvotes ?? 0,
+          downvotes: r.downvotes ?? 0,
+          score: r.score ?? 0,
         }));
-        setReports(transformedData);
+        setReports(cleanData);
+
       }
       setIsLoading(false);
     };
