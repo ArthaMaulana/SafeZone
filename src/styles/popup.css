@@ -1,0 +1,69 @@
+/* Custom styles for modern map popups */
+.modern-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  padding: 0 !important;
+  margin: 0 !important;
+}
+
+.modern-popup .leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: auto !important;
+  min-height: auto !important;
+}
+
+.modern-popup .leaflet-popup-tip-container {
+  display: none !important;
+}
+
+.modern-popup .leaflet-popup-close-button {
+  display: none !important;
+}
+
+/* Animation for popup appearance */
+.modern-popup {
+  animation: popupFadeIn 0.3s ease-out;
+}
+
+@keyframes popupFadeIn {
+  0% {
+    opacity: 0;
+    transform: translateY(-10px) scale(0.95);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+/* Hover effects for interactive elements */
+.modern-popup button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Smooth transitions */
+.modern-popup * {
+  transition: all 0.2s ease !important;
+}
+
+/* Custom scrollbar for long content */
+.modern-popup .popup-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.modern-popup .popup-content::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 2px;
+}
+
+.modern-popup .popup-content::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 2px;
+}
+
+.modern-popup .popup-content::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}

@@ -95,6 +95,8 @@ export const getServerSideProps: GetServerSideProps = async (context) => {
     created_at: data.created_at,
     lat: data.lat,
     lng: data.lng,
+    end_lat: data.end_lat,
+    end_lng: data.end_lng,
     photo_url: data.photo_url,
     upvotes: 0,
     downvotes: 0,

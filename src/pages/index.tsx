@@ -7,6 +7,33 @@ import { useRealtimeReports } from '../hooks/useRealtimeReports';
 import ReportForm from '../components/ReportForm';
 import { useRouter } from 'next/router';
 
+// Category icon mapping
+const getCategoryIcon = (category: string): string => {
+  const iconMap: { [key: string]: string } = {
+    'crime': '🚨',      // Sirene untuk kejahatan
+    'road': '🚧',       // Konstruksi untuk jalan
+    'flood': '🌊',      // Gelombang untuk banjir
+    'lamp': '💡',       // Lampu untuk penerangan
+    'accident': '⚠️',   // Warning untuk kecelakaan
+    'disaster': '🔥',   // Api untuk bencana
+    'other': '📍',      // Pin untuk lainnya
+  };
+  return iconMap[category] || iconMap['other'];
+};
+
+// Category color mapping
+const getCategoryColor = (category: string): string => {
+  const colorMap: { [key: string]: string } = {
+    'crime': '#dc2626',     // Merah - untuk kejahatan
+    'road': '#f59e0b',      // Kuning/Orange - untuk jalan
+    'flood': '#2563eb',     // Biru - untuk banjir
+    'lamp': '#7c3aed',      // Ungu - untuk lampu
+    'accident': '#ea580c',  // Orange gelap - untuk kecelakaan
+    'other': '#6b7280',     // Abu-abu - untuk lainnya
+  };
+  return colorMap[category] || colorMap['other'];
+};
+
 // Dynamic import for Map component to prevent SSR issues
 const Map = dynamic(() => import('../components/Map'), { 
   ssr: false 
@@ -17,6 +44,8 @@ const HomePage = () => {
   const { position, isLoading: isLoadingGeo, error: geoError } = useGeoPermission();
   const [isCreatingReport, setIsCreatingReport] = useState(false);
   const [newReportLocation, setNewReportLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [endReportLocation, setEndReportLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [isRouteMode, setIsRouteMode] = useState(false);
   const router = useRouter();
 
   // Check for URL parameters to center map on specific location
@@ -33,19 +62,44 @@ const HomePage = () => {
   const handleStartCreateReport = () => {
     setIsCreatingReport(true);
     setNewReportLocation(null); // Reset location when starting
+    setEndReportLocation(null);
+    setIsRouteMode(false);
   };
 
   const handleCancelCreateReport = () => {
     setIsCreatingReport(false);
     setNewReportLocation(null);
+    setEndReportLocation(null);
+    setIsRouteMode(false);
   };
 
   const handleFormSuccess = async () => {
     setIsCreatingReport(false);
     setNewReportLocation(null); // Reset location after submission
+    setEndReportLocation(null);
+    setIsRouteMode(false);
     
     // Force refresh reports by re-triggering the hook
     window.location.reload();
+  };
+
+  const handleMapClick = (coords: { lat: number; lng: number }) => {
+    if (isRouteMode) {
+      if (!newReportLocation) {
+        // First click in route mode - set start point
+        setNewReportLocation(coords);
+      } else if (!endReportLocation) {
+        // Second click in route mode - set end point
+        setEndReportLocation(coords);
+      } else {
+        // Third click - reset and start over
+        setNewReportLocation(coords);
+        setEndReportLocation(null);
+      }
+    } else {
+      // Single point mode - just set the location
+      setNewReportLocation(coords);
+    }
   };
 
   return (
@@ -61,7 +115,11 @@ const HomePage = () => {
             <ReportForm 
               onSuccess={handleFormSuccess} 
               initialLocation={newReportLocation}
+              endLocation={endReportLocation}
+              isRouteMode={isRouteMode}
               onLocationChange={setNewReportLocation}
+              onEndLocationChange={setEndReportLocation}
+              onRouteModeChange={setIsRouteMode}
             />
           </div>
         ) : (
@@ -83,9 +141,21 @@ const HomePage = () => {
                 <p className="text-gray-500">Memuat laporan...</p>
               ) : reports.length > 0 ? (
                 reports.map(report => (
-                  <div key={report.report_id} className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow">
+                  <div 
+                    key={report.report_id} 
+                    className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-100"
+                    onClick={() => router.push(`/report/${report.report_id}`)}
+                  >
                     <div className="flex justify-between items-start">
-                      <span className="text-xs font-semibold bg-blue-100 text-blue-800 px-2 py-1 rounded-full">{report.category.toUpperCase()}</span>
+                      <div className="flex items-center space-x-2">
+                        <span className="text-lg">{getCategoryIcon(report.category)}</span>
+                        <span 
+                          className="text-xs font-semibold px-2 py-1 rounded-full text-white"
+                          style={{ backgroundColor: getCategoryColor(report.category) }}
+                        >
+                          {report.category.toUpperCase()}
+                        </span>
+                      </div>
                       <span className="text-lg font-bold text-gray-700">{report.score}</span>
                     </div>
                     <p className="mt-2 text-gray-800">{report.description}</p>
@@ -111,12 +181,23 @@ const HomePage = () => {
           </div>
         )}
         <Map 
-          reports={reports.map(r => ({...r, id: r.report_id}))} 
+          reports={reports.map(r => {
+            const mappedReport = {
+              ...r, 
+              id: r.report_id,
+              end_lat: r.end_lat,
+              end_lng: r.end_lng
+            };
+            console.log('Mapped report for Map:', mappedReport);
+            return mappedReport;
+          })} 
           center={mapCenter} 
           zoom={mapZoom}
           isMarkingMode={isCreatingReport}
-          onMapClick={(coords) => setNewReportLocation(coords)}
+          onMapClick={handleMapClick}
           newReportLocation={newReportLocation}
+          endReportLocation={endReportLocation}
+          isRouteMode={isRouteMode}
         />
 
         {/* Welcome Overlay when no reports are available - hanya tampil jika tidak sedang membuat laporan */}

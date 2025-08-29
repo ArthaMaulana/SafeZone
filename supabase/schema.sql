@@ -36,6 +36,9 @@ CREATE TABLE IF NOT EXISTS public.reports (
     description TEXT NOT NULL,
     lat DOUBLE PRECISION NOT NULL,
     lng DOUBLE PRECISION NOT NULL,
+    -- Koordinat akhir untuk laporan berbasis rute (opsional)
+    end_lat DOUBLE PRECISION,
+    end_lng DOUBLE PRECISION,
     photo_url TEXT,
     status public.report_status NOT NULL DEFAULT 'open',
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
@@ -120,6 +123,7 @@ CREATE POLICY "Users can manage their own subscriptions." ON public.subscription
 
 -- Indeks untuk query geospasial pada laporan
 CREATE INDEX IF NOT EXISTS idx_reports_geo ON public.reports USING gist (lat, lng); -- GIST lebih cocok untuk geo
+CREATE INDEX IF NOT EXISTS idx_reports_end_geo ON public.reports USING gist (end_lat, end_lng); -- GIST untuk koordinat akhir
 
 -- Indeks untuk query geospasial pada langganan
 CREATE INDEX IF NOT EXISTS idx_subscriptions_geo ON public.subscriptions USING gist (center_lat, center_lng); -- GIST lebih cocok untuk geo
@@ -184,6 +188,8 @@ RETURNS TABLE (
     created_at TIMESTAMPTZ,
     lat DOUBLE PRECISION,
     lng DOUBLE PRECISION,
+    end_lat DOUBLE PRECISION,
+    end_lng DOUBLE PRECISION,
     upvotes BIGINT,
     downvotes BIGINT,
     score BIGINT
@@ -199,6 +205,8 @@ BEGIN
         r.created_at,
         r.lat,
         r.lng,
+        r.end_lat,
+        r.end_lng,
         rs.upvotes,
         rs.downvotes,
         rs.score

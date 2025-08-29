@@ -13,6 +13,8 @@ export interface ReportWithScore {
   created_at: string;
   lat: number; // Perlu join untuk mendapatkan ini
   lng: number; // Perlu join untuk mendapatkan ini
+  end_lat?: number; // Koordinat akhir untuk laporan berbasis rute
+  end_lng?: number; // Koordinat akhir untuk laporan berbasis rute
   photo_url?: string | null; // Add photo_url property
   upvotes: number;
   downvotes: number;
@@ -44,6 +46,8 @@ export function useRealtimeReports() {
           downvotes: r.downvotes ?? 0,
           score: r.score ?? 0,
         }));
+        console.log('Raw data from database:', data);
+        console.log('Cleaned data:', cleanData);
         setReports(cleanData);
 
       }

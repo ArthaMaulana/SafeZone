@@ -1,30 +1,55 @@
 // src/components/ReportForm.tsx
 
-import { useState, FormEvent, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
+import { getOptimalRoute } from '../lib/routingService';
 import AuthModal from './AuthModal';
+import SuccessModal from './SuccessModal';
 
 const reportCategories = ['crime', 'road', 'flood', 'lamp', 'accident', 'other'];
 
 interface ReportFormProps {
   onSuccess: () => void;
   initialLocation: { lat: number; lng: number } | null;
+  endLocation?: { lat: number; lng: number } | null;
+  isRouteMode?: boolean;
   onLocationChange: (coords: { lat: number; lng: number } | null) => void;
+  onEndLocationChange?: (coords: { lat: number; lng: number } | null) => void;
+  onRouteModeChange?: (isRoute: boolean) => void;
 }
 
-const ReportForm = ({ onSuccess, initialLocation, onLocationChange }: ReportFormProps) => {
+const ReportForm = ({ 
+  onSuccess, 
+  initialLocation, 
+  endLocation: propEndLocation, 
+  isRouteMode: propIsRouteMode = false,
+  onLocationChange, 
+  onEndLocationChange,
+  onRouteModeChange 
+}: ReportFormProps) => {
   const [category, setCategory] = useState(reportCategories[0]);
   const [description, setDescription] = useState('');
   const [photo, setPhoto] = useState<File | null>(null);
   const [location, setLocation] = useState(initialLocation);
-  const [isGettingLocation, setIsGettingLocation] = useState(false); // Keep for potential future use, but disable for now
+  const [endLocation, setEndLocation] = useState<{ lat: number; lng: number } | null>(propEndLocation || null);
+  const [isRouteMode, setIsRouteMode] = useState(propIsRouteMode);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
 
-  // Sync state with prop from parent
+  // Sync state with props from parent
   useEffect(() => {
     setLocation(initialLocation);
   }, [initialLocation]);
+
+  useEffect(() => {
+    setEndLocation(propEndLocation || null);
+  }, [propEndLocation]);
+
+  useEffect(() => {
+    setIsRouteMode(propIsRouteMode);
+  }, [propIsRouteMode]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -42,6 +67,11 @@ const ReportForm = ({ onSuccess, initialLocation, onLocationChange }: ReportForm
       return;
     }
 
+    if (isRouteMode && !endLocation) {
+      setError('Dalam mode rute, titik akhir harus ditentukan. Silakan klik pada peta untuk menandai titik akhir.');
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -56,6 +86,8 @@ const ReportForm = ({ onSuccess, initialLocation, onLocationChange }: ReportForm
         description,
         lat: location.lat,
         lng: location.lng,
+        end_lat: endLocation?.lat || null,
+        end_lng: endLocation?.lng || null,
         photo_url: null,
       };
 
@@ -78,12 +110,12 @@ const ReportForm = ({ onSuccess, initialLocation, onLocationChange }: ReportForm
       setDescription('');
       setPhoto(null);
       setCategory(reportCategories[0]);
+      setEndLocation(null);
+      setIsRouteMode(false);
       onLocationChange(null);
       
-      // Show success message
-      alert('Laporan berhasil dikirim!');
-      
-      onSuccess();
+      // Show success modal
+      setShowSuccessModal(true);
 
     } catch (err: any) {
       setError(err.message || 'Terjadi kesalahan saat mengirim laporan.');
@@ -122,16 +154,62 @@ const ReportForm = ({ onSuccess, initialLocation, onLocationChange }: ReportForm
         />
       </div>
 
+      {/* Route Mode Toggle */}
+      <div>
+        <label className="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            checked={isRouteMode}
+            onChange={(e) => {
+              const newRouteMode = e.target.checked;
+              setIsRouteMode(newRouteMode);
+              onRouteModeChange?.(newRouteMode);
+              if (!newRouteMode) {
+                setEndLocation(null);
+                onEndLocationChange?.(null);
+              }
+            }}
+            className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+          />
+          <span className="text-sm font-medium text-gray-700">
+            Laporan berbasis rute (dari titik awal ke titik akhir)
+          </span>
+        </label>
+        <p className="text-xs text-gray-500 mt-1">
+          Aktifkan untuk melaporkan masalah yang terjadi sepanjang jalur tertentu (misal: jalan rusak, banjir area)
+        </p>
+      </div>
+
       {/* Location Info */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-1">Lokasi Laporan</label>
+        <label className="block text-sm font-medium text-gray-700 mb-1">
+          {isRouteMode ? 'Titik Awal' : 'Lokasi Laporan'}
+        </label>
         <div className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md bg-gray-50 text-sm">
           <svg className={`-ml-1 mr-2 h-5 w-5 ${location ? 'text-green-500' : 'text-gray-400'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
           <span className="text-gray-700">
-            {location ? `Lokasi: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : 'Klik pada peta untuk menandai lokasi'}
+            {location ? `${isRouteMode ? 'Titik Awal' : 'Lokasi'}: ${location.lat.toFixed(4)}, ${location.lng.toFixed(4)}` : 'Klik pada peta untuk menandai lokasi'}
           </span>
         </div>
       </div>
+
+      {/* End Location Info (only shown in route mode) */}
+      {isRouteMode && (
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Titik Akhir</label>
+          <div className="w-full flex items-center justify-center px-4 py-3 border border-gray-300 rounded-md bg-gray-50 text-sm">
+            <svg className={`-ml-1 mr-2 h-5 w-5 ${endLocation ? 'text-green-500' : 'text-gray-400'}`} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" /></svg>
+            <span className="text-gray-700">
+              {endLocation ? `Titik Akhir: ${endLocation.lat.toFixed(4)}, ${endLocation.lng.toFixed(4)}` : 'Klik pada peta untuk menandai titik akhir'}
+            </span>
+          </div>
+          {isRouteMode && !endLocation && (
+            <p className="text-xs text-red-500 mt-1">
+              Dalam mode rute, Anda perlu menandai titik akhir setelah menandai titik awal
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Photo Upload */}
       <div>
@@ -181,6 +259,22 @@ const ReportForm = ({ onSuccess, initialLocation, onLocationChange }: ReportForm
             const fakeEvent = { preventDefault: () => {} } as FormEvent;
             await handleSubmit(fakeEvent);
           }, 1500); // Increase delay to 1.5 seconds
+        }}
+      />
+
+      {/* Success Modal */}
+      <SuccessModal
+        isOpen={showSuccessModal}
+        onClose={() => {
+          setShowSuccessModal(false);
+          onSuccess();
+        }}
+        title="Laporan Berhasil Dikirim! 🎉"
+        message="Terima kasih telah berkontribusi untuk keamanan lingkungan. Laporan Anda akan membantu warga lain mengetahui kondisi terkini di area tersebut."
+        actionText="Lihat di Peta"
+        onAction={() => {
+          setShowSuccessModal(false);
+          onSuccess();
         }}
       />
     </form>
