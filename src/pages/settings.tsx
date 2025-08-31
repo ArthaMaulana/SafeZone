@@ -106,7 +106,7 @@ const SettingsPage = () => {
               </p>
             ) : (
               <p className="text-sm text-yellow-600">
-                {geoError ? geoError.message : 'Mencari lokasi Anda...'}
+                {geoError ? geoError : 'Mencari lokasi Anda...'}
               </p>
             )}
           </div>
