@@ -5,6 +5,7 @@ import { supabase } from '../lib/supabaseClient';
 import { getOptimalRoute } from '../lib/routingService';
 import AuthModal from './AuthModal';
 import SuccessModal from './SuccessModal';
+import type { User } from '@supabase/supabase-js';
 
 const reportCategories = ['crime', 'road', 'flood', 'lamp', 'accident', 'other'];
 
@@ -37,6 +38,8 @@ const ReportForm = ({
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true);
 
   // Sync state with props from parent
   useEffect(() => {
@@ -50,13 +53,63 @@ const ReportForm = ({
   useEffect(() => {
     setIsRouteMode(propIsRouteMode);
   }, [propIsRouteMode]);
+  
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Check authentication status on component mount
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Auth check error:', error);
+          setUser(null);
+        } else {
+          setUser(user);
+        }
+      } catch (error) {
+        console.error('Error checking auth:', error);
+        setUser(null);
+      } finally {
+        setIsCheckingAuth(false);
+      }
+    };
+
+    checkAuth();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('ReportForm auth state changed:', event, session?.user?.email);
+      setUser(session?.user ?? null);
+      if (event === 'SIGNED_IN') {
+        setShowAuthModal(false);
+        setError(null); // Clear any auth-related errors
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
+    
+    console.log('=== FORM SUBMISSION STARTED ===');
+    console.log('User:', user);
+    console.log('Location:', location);
+    console.log('End Location:', endLocation);
+    console.log('Is Route Mode:', isRouteMode);
+    console.log('Description:', description);
+    console.log('Category:', category);
+
+    // Check if user is authenticated
+    if (!user) {
+      console.log('ERROR: User not authenticated');
+      setError('Silakan login terlebih dahulu melalui tombol Login di navbar atas.');
+      return;
+    }
 
     if (!description.trim()) {
       setError('Deskripsi tidak boleh kosong.');
@@ -75,36 +128,82 @@ const ReportForm = ({
     setIsLoading(true);
 
     try {
-      // Bypass auth completely for testing - create anonymous report
-      const anonymousUserId = 'anonymous-' + Date.now();
-      console.log('Creating anonymous report for testing');
+      // Create authenticated report
+      console.log('Creating report for authenticated user:', user.id);
+      console.log('User object full details:', JSON.stringify(user, null, 2));
 
-      // Skip photo upload and profile creation for now
+      // Handle photo upload if present
+      let photoUrl = null;
+      if (photo) {
+        console.log('Starting photo upload...');
+        const fileExt = photo.name.split('.').pop();
+        const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+        
+        const { data: uploadData, error: uploadError } = await supabase.storage
+          .from('report-photos')
+          .upload(fileName, photo);
+
+        if (uploadError) {
+          console.warn('Photo upload failed:', uploadError);
+          // Continue without photo if upload fails
+        } else {
+          console.log('Photo uploaded successfully:', uploadData);
+          const { data: { publicUrl } } = supabase.storage
+            .from('report-photos')
+            .getPublicUrl(fileName);
+          photoUrl = publicUrl;
+          console.log('Photo URL generated:', photoUrl);
+        }
+      }
+
       const reportData = {
-        user_id: null, // Allow null user_id for anonymous reports
+        user_id: user.id,
         category,
         description,
         lat: location.lat,
         lng: location.lng,
         end_lat: endLocation?.lat || null,
         end_lng: endLocation?.lng || null,
-        photo_url: null,
+        photo_url: photoUrl,
+        status: 'pending_review', // New reports need admin approval
       };
 
-      console.log('Inserting report data:', reportData);
+      console.log('=== ATTEMPTING DATABASE INSERT ===');
+      console.log('Report data to insert:', JSON.stringify(reportData, null, 2));
       
-      // Try insert with service role bypass
+      // Test database connection first
+      console.log('Testing database connection...');
+      const { data: testData, error: testError } = await supabase
+        .from('reports')
+        .select('count')
+        .limit(1);
+      
+      if (testError) {
+        console.error('Database connection test failed:', testError);
+        throw new Error(`Database connection failed: ${testError.message}`);
+      }
+      
+      console.log('Database connection test passed, proceeding with insert...');
+      
       const { data, error: insertError } = await supabase
         .from('reports')
         .insert(reportData)
         .select();
       
+      console.log('Insert response - data:', data);
+      console.log('Insert response - error:', insertError);
+      
       if (insertError) {
-        console.error('Insert error:', insertError);
+        console.error('=== DATABASE INSERT ERROR ===');
+        console.error('Error code:', insertError.code);
+        console.error('Error message:', insertError.message);
+        console.error('Error details:', insertError.details);
+        console.error('Error hint:', insertError.hint);
         throw insertError;
       }
       
       console.log('Report inserted successfully:', data);
+      console.log('=== FORM SUBMISSION COMPLETED SUCCESSFULLY ===');
       
       // Reset form
       setDescription('');
@@ -118,6 +217,8 @@ const ReportForm = ({
       setShowSuccessModal(true);
 
     } catch (err: any) {
+      console.error('=== FORM SUBMISSION ERROR ===');
+      console.error('Error details:', err);
       setError(err.message || 'Terjadi kesalahan saat mengirim laporan.');
     } finally {
       setIsLoading(false);
@@ -229,38 +330,44 @@ const ReportForm = ({
         </div>
       </div>
 
+      {/* Mobile Map Instructions */}
+      <div className="md:hidden bg-blue-50 border border-blue-200 rounded-lg p-3 mb-4">
+        <div className="flex items-start space-x-2">
+          <span className="text-blue-600 text-lg">📍</span>
+          <div>
+            <p className="text-sm font-medium text-blue-800">Cara Menandai Lokasi:</p>
+            <p className="text-xs text-blue-700 mt-1">
+              Scroll ke bawah untuk melihat peta, lalu klik pada lokasi yang ingin dilaporkan
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {isCheckingAuth ? (
+        <div className="text-center py-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="text-sm text-gray-600 mt-2">Memeriksa status login...</p>
+        </div>
+      ) : !user ? (
+        <div className="text-center py-4">
+          <p className="text-sm text-gray-600">Login diperlukan untuk mengirim laporan. Lihat navbar untuk login.</p>
+        </div>
+      ) : (
+        <></>
+      )}
+
       {/* Error Message */}
       {error && <div className="p-3 bg-red-100 text-red-700 rounded-md text-sm">{error}</div>}
 
       {/* Submit Button */}
       <button
         type="submit"
-        disabled={isLoading}
+        disabled={isLoading || !user || isCheckingAuth}
         className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:bg-gray-400 transition-colors"
       >
-        {isLoading ? 'Mengirim Laporan...' : 'Kirim Laporan'}
+        {isLoading ? 'Mengirim Laporan...' : !user ? 'Login Diperlukan - Lihat Navbar' : 'Kirim Laporan'}
       </button>
 
-      {/* Auth Modal */}
-      <AuthModal
-        isOpen={showAuthModal}
-        onClose={() => {
-          setShowAuthModal(false);
-          setIsAuthenticating(false);
-        }}
-        onSuccess={() => {
-          console.log('Auth success, closing modal and retrying submit');
-          setShowAuthModal(false);
-          setIsAuthenticating(false);
-          
-          // Auto-retry submit setelah auth berhasil
-          setTimeout(async () => {
-            console.log('Auto-retrying submit after auth success');
-            const fakeEvent = { preventDefault: () => {} } as FormEvent;
-            await handleSubmit(fakeEvent);
-          }, 1500); // Increase delay to 1.5 seconds
-        }}
-      />
 
       {/* Success Modal */}
       <SuccessModal
@@ -270,7 +377,7 @@ const ReportForm = ({
           onSuccess();
         }}
         title="Laporan Berhasil Dikirim! 🎉"
-        message="Terima kasih telah berkontribusi untuk keamanan lingkungan. Laporan Anda akan membantu warga lain mengetahui kondisi terkini di area tersebut."
+        message="Terima kasih telah berkontribusi untuk keamanan lingkungan. Laporan Anda sedang menunggu persetujuan admin dan akan ditampilkan di peta setelah disetujui."
         actionText="Lihat di Peta"
         onAction={() => {
           setShowSuccessModal(false);

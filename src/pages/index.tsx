@@ -1,10 +1,12 @@
 // src/pages/index.tsx
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useGeoPermission } from '../hooks/useGeoPermission';
 import { useRealtimeReports } from '../hooks/useRealtimeReports';
 import ReportForm from '../components/ReportForm';
+import Navbar from '../components/Navbar';
+import ReportStats from '../components/ReportStats';
 import { useRouter } from 'next/router';
 
 // Category icon mapping
@@ -46,6 +48,8 @@ const HomePage = () => {
   const [newReportLocation, setNewReportLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [endReportLocation, setEndReportLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [isRouteMode, setIsRouteMode] = useState(false);
+  const [showScrollButton, setShowScrollButton] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const router = useRouter();
 
   // Check for URL parameters to center map on specific location
@@ -58,6 +62,31 @@ const HomePage = () => {
     : [-6.2088, 106.8456]; // Default to Jakarta
     
   const mapZoom = zoom ? parseInt(zoom as string) : 13;
+
+  // Handle mobile detection and scroll
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+    
+    const handleScroll = () => {
+      const scrollY = window.scrollY;
+      setShowScrollButton(scrollY > 200);
+    };
+
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    window.addEventListener('scroll', handleScroll);
+    
+    return () => {
+      window.removeEventListener('resize', checkMobile);
+      window.removeEventListener('scroll', handleScroll);
+    };
+  }, []);
+
+  const scrollToTop = () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const handleStartCreateReport = () => {
     setIsCreatingReport(true);
@@ -73,14 +102,14 @@ const HomePage = () => {
     setIsRouteMode(false);
   };
 
-  const handleFormSuccess = async () => {
+  const handleFormSuccess = () => {
     setIsCreatingReport(false);
-    setNewReportLocation(null); // Reset location after submission
+    setNewReportLocation(null);
     setEndReportLocation(null);
     setIsRouteMode(false);
     
-    // Force refresh reports by re-triggering the hook
-    window.location.reload();
+    // Reports will be updated automatically via realtime subscription
+    // No need to reload the page
   };
 
   const handleMapClick = (coords: { lat: number; lng: number }) => {
@@ -103,9 +132,15 @@ const HomePage = () => {
   };
 
   return (
-    <div className="h-screen w-screen flex flex-col md:flex-row-reverse bg-gray-100 font-sans">
+    <div className="h-screen w-screen flex flex-col bg-gray-100 font-sans">
+      {/* Navbar */}
+      <Navbar />
+      
+      {/* Main Content */}
+      <div className="flex-1 flex flex-col-reverse md:flex-row-reverse" style={{ height: 'calc(100vh - 64px)' }}>
       {/* Sidebar for reports and form */}
-      <aside className="w-full md:w-96 bg-white p-6 flex flex-col shadow-lg overflow-y-auto z-10">
+      <aside className="md:h-full md:w-96 w-full bg-white flex flex-col shadow-lg overflow-y-auto z-10 p-4 md:p-6" 
+             style={{ height: isMobile ? '66.67%' : '100%' }}>
         {isCreatingReport ? (
           <div>
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
@@ -125,7 +160,7 @@ const HomePage = () => {
         ) : (
           <div className="flex-1 flex flex-col">
             <div className="flex justify-between items-center mb-4 pb-2 border-b">
-              <h1 className="text-3xl font-bold text-gray-800">Laporan Terkini</h1>
+              <h1 className="text-2xl font-bold text-gray-800">SafeZone</h1>
               <button 
                 onClick={handleStartCreateReport}
                 className="bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg shadow-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50 transition-colors"
@@ -136,45 +171,54 @@ const HomePage = () => {
             {reportsError && <p className="text-red-600 bg-red-100 p-3 rounded-md">Error: {reportsError}</p>}
             {geoError && <p className="text-yellow-700 bg-yellow-100 p-3 rounded-md">Peringatan: {geoError}</p>}
             
-            <div className="space-y-4 flex-1 overflow-y-auto">
-              {isLoadingReports ? (
-                <p className="text-gray-500">Memuat laporan...</p>
-              ) : reports.length > 0 ? (
-                reports.map(report => (
-                  <div 
-                    key={report.report_id} 
-                    className="bg-gray-50 p-4 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-100"
-                    onClick={() => router.push(`/report/${report.report_id}`)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-center space-x-2">
-                        <span className="text-lg">{getCategoryIcon(report.category)}</span>
-                        <span 
-                          className="text-xs font-semibold px-2 py-1 rounded-full text-white"
-                          style={{ backgroundColor: getCategoryColor(report.category) }}
-                        >
-                          {report.category.toUpperCase()}
-                        </span>
+            {/* Report Statistics */}
+            <div className="mb-4">
+              <ReportStats />
+            </div>
+            
+            {/* All Reports Section */}
+            <div className="flex-1 flex flex-col">
+              <h2 className="text-lg font-semibold text-gray-800 mb-3">Semua Laporan</h2>
+              <div className="space-y-3 flex-1 overflow-y-auto">
+                {isLoadingReports ? (
+                  <p className="text-gray-500">Memuat laporan...</p>
+                ) : reports.length > 0 ? (
+                  reports.map(report => (
+                    <div 
+                      key={report.report_id} 
+                      className="bg-gray-50 p-3 rounded-lg shadow-sm border border-gray-200 hover:shadow-md transition-shadow cursor-pointer hover:bg-gray-100"
+                      onClick={() => router.push(`/report/${report.report_id}`)}
+                    >
+                      <div className="flex justify-between items-start">
+                        <div className="flex items-center space-x-2">
+                          <span className="text-sm">{getCategoryIcon(report.category)}</span>
+                          <span 
+                            className="text-xs font-semibold px-2 py-1 rounded-full text-white"
+                            style={{ backgroundColor: getCategoryColor(report.category) }}
+                          >
+                            {report.category.toUpperCase()}
+                          </span>
+                        </div>
+                        <span className="text-sm font-bold text-gray-700">{report.score}</span>
                       </div>
-                      <span className="text-lg font-bold text-gray-700">{report.score}</span>
+                      <p className="mt-2 text-sm text-gray-800 line-clamp-2">{report.description}</p>
+                      <p className="mt-2 text-xs text-gray-500">{new Date(report.created_at).toLocaleDateString('id-ID')}</p>
                     </div>
-                    <p className="mt-2 text-gray-800">{report.description}</p>
-                    <p className="mt-3 text-xs text-gray-500">Dilaporkan pada {new Date(report.created_at).toLocaleString()}</p>
+                  ))
+                ) : (
+                  <div className="text-center py-6 px-4 bg-gray-50 rounded-lg">
+                    <h3 className="text-lg font-semibold text-gray-800">Belum Ada Laporan</h3>
+                    <p className="text-gray-600 mt-2">Jadilah yang pertama melaporkan kondisi di sekitar Anda.</p>
                   </div>
-                ))
-              ) : (
-                <div className="text-center py-10 px-4 bg-gray-50 rounded-lg">
-                  <h3 className="text-lg font-semibold text-gray-800">Belum Ada Laporan</h3>
-                  <p className="text-gray-600 mt-2">Jadilah yang pertama melaporkan kondisi di sekitar Anda dengan menekan tombol di atas.</p>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}
       </aside>
 
       {/* Main content area for the map */}
-      <main className="flex-1 relative" style={{ zIndex: 1 }}>
+      <main className="flex-1 relative md:h-full" style={{ height: isMobile ? '33.33%' : '100%', zIndex: 1 }}>
         {(isLoadingGeo || isLoadingReports) && (
           <div className="absolute inset-0 bg-white bg-opacity-75 flex items-center justify-center z-20">
             <span className="text-lg font-medium text-gray-700">Memuat Peta dan Laporan...</span>
@@ -231,7 +275,21 @@ const HomePage = () => {
             </div>
           </div>
         )}
+
+        {/* Floating Scroll to Top Button - Mobile Only */}
+        {showScrollButton && (
+          <button
+            onClick={scrollToTop}
+            className="md:hidden fixed bottom-4 right-4 z-30 bg-blue-600 text-white p-3 rounded-full shadow-lg hover:bg-blue-700 transition-all duration-300 transform hover:scale-110"
+            aria-label="Scroll to top"
+          >
+            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
+            </svg>
+          </button>
+        )}
       </main>
+      </div>
     </div>
   );
 };

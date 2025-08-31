@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Auth Debug Test</title>
+</head>
+<body>
+    <h1>Email Validation Test</h1>
+    <form id="testForm">
+        <input type="email" id="emailInput" value="art@gmail.com" placeholder="Enter email">
+        <button type="submit">Test</button>
+    </form>
+    <div id="result"></div>
+
+    <script>
+        document.getElementById('testForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const email = document.getElementById('emailInput').value;
+            const trimmedEmail = email.trim().toLowerCase();
+            
+            console.log('Original email:', email);
+            console.log('Trimmed email:', trimmedEmail);
+            
+            // Test different validations
+            const regex1 = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const regex2 = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+            
+            const hasAt = trimmedEmail.includes('@');
+            const hasDot = trimmedEmail.includes('.');
+            const parts = trimmedEmail.split('@');
+            
+            document.getElementById('result').innerHTML = `
+                <h3>Results for: ${trimmedEmail}</h3>
+                <p>Has @: ${hasAt}</p>
+                <p>Has .: ${hasDot}</p>
+                <p>Parts length: ${parts.length}</p>
+                <p>Regex1 test: ${regex1.test(trimmedEmail)}</p>
+                <p>Regex2 test: ${regex2.test(trimmedEmail)}</p>
+                <p>Browser validity: ${document.getElementById('emailInput').validity.valid}</p>
+            `;
+        });
+    </script>
+</body>
+</html>

@@ -93,8 +93,8 @@ CREATE POLICY "Public profiles are viewable by everyone." ON public.profiles FOR
 DROP POLICY IF EXISTS "Anyone can view reports." ON public.reports;
 CREATE POLICY "Anyone can view reports." ON public.reports FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Users can create their own reports." ON public.reports;
-CREATE POLICY "Anyone can create reports." ON public.reports FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated users can create reports." ON public.reports;
+CREATE POLICY "Authenticated users can create reports." ON public.reports FOR INSERT WITH CHECK (auth.uid() IS NOT NULL AND auth.uid() = user_id);
 
 DROP POLICY IF EXISTS "Users can update their own reports." ON public.reports;
 CREATE POLICY "Users can update their own reports." ON public.reports FOR UPDATE USING (auth.uid() = user_id) WITH CHECK (auth.uid() = user_id);
@@ -106,14 +106,14 @@ CREATE POLICY "Users can delete their own reports." ON public.reports FOR DELETE
 DROP POLICY IF EXISTS "Anyone can view votes." ON public.votes;
 CREATE POLICY "Anyone can view votes." ON public.votes FOR SELECT USING (true);
 
-DROP POLICY IF EXISTS "Users can create their own votes." ON public.votes;
-CREATE POLICY "Anyone can create votes." ON public.votes FOR INSERT WITH CHECK (true);
+DROP POLICY IF EXISTS "Authenticated users can create votes." ON public.votes;
+CREATE POLICY "Authenticated users can create votes." ON public.votes FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
 
 DROP POLICY IF EXISTS "Users can update their own votes." ON public.votes;
-CREATE POLICY "Anyone can update votes." ON public.votes FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Users can update their own votes." ON public.votes FOR UPDATE USING (auth.uid()::text = user_id) WITH CHECK (auth.uid()::text = user_id);
 
 DROP POLICY IF EXISTS "Users can delete their own votes." ON public.votes;
-CREATE POLICY "Anyone can delete votes." ON public.votes FOR DELETE USING (true);
+CREATE POLICY "Users can delete their own votes." ON public.votes FOR DELETE USING (auth.uid()::text = user_id);
 
 -- Kebijakan untuk tabel `subscriptions`
 DROP POLICY IF EXISTS "Users can manage their own subscriptions." ON public.subscriptions;

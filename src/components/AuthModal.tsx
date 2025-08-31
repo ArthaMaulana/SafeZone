@@ -1,6 +1,6 @@
 // src/components/AuthModal.tsx
 
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { supabase } from '../lib/supabaseClient';
 
 interface AuthModalProps {
@@ -16,19 +16,22 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleLogin = async () => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+  // Reset form when modal opens/closes
+  React.useEffect(() => {
+    if (isOpen) {
+      setEmail('');
+      setPassword('');
+      setError(null);
+      setIsLoading(false);
+    }
+  }, [isOpen]);
 
-    if (error) throw error;
-    
-    console.log('Login successful:', data);
-    
-    // Tunggu sebentar untuk memastikan session tersimpan
-    await new Promise(resolve => setTimeout(resolve, 1000));
+  // Reset error when switching between login/register
+  const handleModeSwitch = () => {
+    setIsLogin(!isLogin);
+    setError(null);
   };
+
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -37,21 +40,36 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
     try {
       if (isLogin) {
-        await handleLogin();
-      } else {
-        const { error } = await supabase.auth.signUp({
-          email,
+        // Login flow
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email: email,
           password,
         });
-        if (error) throw error;
         
-        // Tunggu lebih lama untuk memastikan session tersimpan
-        await new Promise(resolve => setTimeout(resolve, 2000));
+        if (error) {
+          setError('Login gagal');
+          return;
+        }
+        
+        onSuccess();
+        
+      } else {
+        // Register flow
+        const { data, error } = await supabase.auth.signUp({
+          email: email,
+          password,
+        });
+        
+        if (error) {
+          setError('Registrasi gagal');
+          return;
+        }
+        
+        onSuccess();
       }
       
-      onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Terjadi kesalahan');
+    } catch (err) {
+      setError('Terjadi kesalahan');
     } finally {
       setIsLoading(false);
     }
@@ -62,25 +80,24 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     setError(null);
     
     try {
-      // Generate temporary email untuk guest
-      const tempEmail = `guest_${Date.now()}@temp.com`;
-      const tempPassword = `temp_${Date.now()}`;
+      const timestamp = Date.now();
+      const tempEmail = `guest${timestamp}@test.com`;
+      const tempPassword = `guest123456`;
       
-      const { data, error } = await supabase.auth.signUp({
+      const { error } = await supabase.auth.signUp({
         email: tempEmail,
         password: tempPassword,
       });
 
-      if (error) throw error;
-      
-      console.log('Guest signup successful:', data);
-
-      // Tunggu lebih lama untuk memastikan session tersimpan
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      if (error) {
+        setError('Mode tamu tidak tersedia. Silakan daftar manual.');
+        return;
+      }
       
       onSuccess();
-    } catch (err: any) {
-      setError(err.message || 'Gagal masuk sebagai tamu');
+      
+    } catch (err) {
+      setError('Gagal masuk sebagai tamu.');
     } finally {
       setIsLoading(false);
     }
@@ -109,12 +126,11 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               Email
             </label>
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-              autoComplete="email"
+              placeholder="Email"
             />
           </div>
 
@@ -127,9 +143,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              required
-              autoComplete={isLogin ? "current-password" : "new-password"}
-              minLength={6}
+              placeholder="Password"
             />
           </div>
 
@@ -150,7 +164,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
 
         <div className="mt-4 text-center">
           <button
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={handleModeSwitch}
             className="text-blue-600 hover:text-blue-800 text-sm"
           >
             {isLogin ? 'Belum punya akun? Daftar' : 'Sudah punya akun? Masuk'}
