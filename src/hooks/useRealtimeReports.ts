@@ -48,6 +48,7 @@ export function useRealtimeReports() {
         }));
         console.log('Raw data from database:', data);
         console.log('Cleaned data:', cleanData);
+        console.log('Setting reports state with', cleanData.length, 'reports');
         setReports(cleanData);
 
       }
@@ -60,7 +61,10 @@ export function useRealtimeReports() {
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'reports' },
-          () => fetchInitialReports() // Cara paling sederhana: fetch ulang semua data jika ada perubahan
+          (payload) => {
+            console.log('Reports table changed:', payload);
+            fetchInitialReports(); // Cara paling sederhana: fetch ulang semua data jika ada perubahan
+          }
         )
         .on(
           'postgres_changes',

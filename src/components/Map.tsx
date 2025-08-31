@@ -403,7 +403,11 @@ const Map: React.FC<MapProps> = ({
 
                     {/* Action Button */}
                     <button 
-                      onClick={() => window.open(`/report/${report.id}`, '_blank')}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        window.location.href = `/report/${report.id}`;
+                      }}
                       className="w-full bg-gradient-to-r from-blue-500 to-blue-600 text-white text-sm font-medium py-2.5 px-4 rounded-lg hover:from-blue-600 hover:to-blue-700 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
                     >
                       <div className="flex items-center justify-center space-x-2">
@@ -486,7 +490,11 @@ const Map: React.FC<MapProps> = ({
 
                         {/* Action Button */}
                         <button 
-                          onClick={() => window.open(`/report/${report.id}`, '_blank')}
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            window.location.href = `/report/${report.id}`;
+                          }}
                           className="w-full bg-gradient-to-r from-red-500 to-red-600 text-white text-sm font-medium py-2.5 px-4 rounded-lg hover:from-red-600 hover:to-red-700 transform hover:scale-105 transition-all duration-200 shadow-md hover:shadow-lg"
                         >
                           <div className="flex items-center justify-center space-x-2">

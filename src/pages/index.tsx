@@ -108,8 +108,11 @@ const HomePage = () => {
     setEndReportLocation(null);
     setIsRouteMode(false);
     
-    // Reports will be updated automatically via realtime subscription
-    // No need to reload the page
+    // Force a small delay then trigger realtime refresh
+    setTimeout(() => {
+      console.log('Triggering manual refresh after report creation');
+      // The useRealtimeReports hook should pick up the change automatically
+    }, 1000);
   };
 
   const handleMapClick = (coords: { lat: number; lng: number }) => {
