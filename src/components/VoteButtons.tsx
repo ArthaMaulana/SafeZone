@@ -88,24 +88,65 @@ const VoteButtons = ({ reportId, initialScore }: VoteButtonsProps) => {
   };
 
   return (
-    <div className="flex items-center space-x-2">
-      <button
-        onClick={() => handleVote(1)}
-        disabled={isLoading}
-        className={`p-2 rounded-full transition-colors ${userVote === 1 ? 'bg-green-500 text-white' : 'bg-gray-200 hover:bg-green-100'}`}
-        aria-label="Upvote"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-8.707l-3-3a1 1 0 00-1.414 0l-3 3a1 1 0 001.414 1.414L9 9.414V13a1 1 0 102 0V9.414l1.293 1.293a1 1 0 001.414-1.414z" clipRule="evenodd" /></svg>
-      </button>
-      <span className="font-bold text-lg">{score}</span>
-      <button
-        onClick={() => handleVote(-1)}
-        disabled={isLoading}
-        className={`p-2 rounded-full transition-colors ${userVote === -1 ? 'bg-red-500 text-white' : 'bg-gray-200 hover:bg-red-100'}`}
-        aria-label="Downvote"
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm-3.707-7.293l3 3a1 1 0 001.414 0l3-3a1 1 0 10-1.414-1.414L11 10.586V7a1 1 0 10-2 0v3.586L7.707 9.293a1 1 0 00-1.414 1.414z" clipRule="evenodd" /></svg>
-      </button>
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl p-4 shadow-lg border border-white/20">
+      <div className="text-center mb-3">
+        <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Skor Komunitas</span>
+      </div>
+      <div className="flex items-center justify-center space-x-4">
+        <button
+          onClick={() => handleVote(1)}
+          disabled={isLoading}
+          className={`group relative p-3 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            userVote === 1 
+              ? 'bg-gradient-to-r from-green-500 to-emerald-500 text-white shadow-lg shadow-green-500/25' 
+              : 'bg-white/80 text-gray-600 hover:bg-green-50 hover:text-green-600 border border-gray-200 hover:border-green-300'
+          } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
+          aria-label="Upvote"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+          </svg>
+          {userVote === 1 && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full animate-pulse"></div>
+          )}
+        </button>
+        
+        <div className="text-center px-4">
+          <div className={`text-2xl font-bold transition-colors duration-200 ${
+            score > 0 ? 'text-green-600' : score < 0 ? 'text-red-600' : 'text-gray-600'
+          }`}>
+            {score > 0 ? '+' : ''}{score}
+          </div>
+          <div className="text-xs text-gray-500 mt-1">
+            {Math.abs(score) === 1 ? 'vote' : 'votes'}
+          </div>
+        </div>
+        
+        <button
+          onClick={() => handleVote(-1)}
+          disabled={isLoading}
+          className={`group relative p-3 rounded-xl transition-all duration-200 transform hover:scale-105 ${
+            userVote === -1 
+              ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-lg shadow-red-500/25' 
+              : 'bg-white/80 text-gray-600 hover:bg-red-50 hover:text-red-600 border border-gray-200 hover:border-red-300'
+          } ${isLoading ? 'opacity-50 cursor-not-allowed' : 'hover:shadow-md'}`}
+          aria-label="Downvote"
+        >
+          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+          {userVote === -1 && (
+            <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
+          )}
+        </button>
+      </div>
+      
+      {isLoading && (
+        <div className="flex items-center justify-center mt-3">
+          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
+          <span className="ml-2 text-xs text-gray-500">Memproses...</span>
+        </div>
+      )}
     </div>
   );
 };
