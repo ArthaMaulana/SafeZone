@@ -41,7 +41,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
     try {
       if (isLogin) {
         // Login flow
-        const { data, error } = await supabase.auth.signInWithPassword({
+        const { error } = await supabase.auth.signInWithPassword({
           email: email,
           password,
         });
@@ -55,7 +55,7 @@ const AuthModal = ({ isOpen, onClose, onSuccess }: AuthModalProps) => {
         
       } else {
         // Register flow
-        const { data, error } = await supabase.auth.signUp({
+        const { error } = await supabase.auth.signUp({
           email: email,
           password,
         });

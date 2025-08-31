@@ -2,8 +2,6 @@
 
 import { useState, useEffect, FormEvent } from 'react';
 import { supabase } from '../lib/supabaseClient';
-import { getOptimalRoute } from '../lib/routingService';
-import AuthModal from './AuthModal';
 import SuccessModal from './SuccessModal';
 import type { User } from '@supabase/supabase-js';
 
@@ -34,9 +32,6 @@ const ReportForm = ({
   const [location, setLocation] = useState(initialLocation);
   const [endLocation, setEndLocation] = useState<{ lat: number; lng: number } | null>(propEndLocation || null);
   const [isRouteMode, setIsRouteMode] = useState(propIsRouteMode);
-  const [isGettingLocation, setIsGettingLocation] = useState(false);
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [user, setUser] = useState<User | null>(null);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
@@ -83,7 +78,6 @@ const ReportForm = ({
       console.log('ReportForm auth state changed:', event, session?.user?.email);
       setUser(session?.user ?? null);
       if (event === 'SIGNED_IN') {
-        setShowAuthModal(false);
         setError(null); // Clear any auth-related errors
       }
     });

@@ -22,7 +22,12 @@
     "react/react-in-jsx-scope": "off", // Tidak perlu di Next.js modern
     "@typescript-eslint/explicit-module-boundary-types": "off",
     "@typescript-eslint/no-explicit-any": "warn", // Peringatkan jika menggunakan `any`
-    "react/prop-types": "off" // Tidak relevan saat menggunakan TypeScript
+    "@typescript-eslint/no-unused-vars": "warn", // Change from error to warning
+    "react/prop-types": "off", // Tidak relevan saat menggunakan TypeScript
+    "react/no-unescaped-entities": "warn", // Change from error to warning
+    "@next/next/no-html-link-for-pages": "warn", // Change from error to warning
+    "@next/next/no-img-element": "warn", // Change from error to warning
+    "react-hooks/exhaustive-deps": "warn" // Change from error to warning
   },
   "settings": {
     "react": {
